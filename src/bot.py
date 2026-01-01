@@ -2,11 +2,13 @@ import os
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher, Router, F
-from aiogram.filters import Command, CommandStart
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.filters import Command, CommandStart, ChatMemberUpdatedFilter
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, ChatMemberUpdated, ChatPermissions
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram import Bot, Dispatcher, Router, F
+from aiogram.exceptions import TelegramBadRequest
 
 from models import init_db, get_session, User, Project
 
@@ -16,6 +18,85 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 router = Router()
+
+SCAM_KEYWORDS = ["airdrop", "presale", "whitelist", "investment", "guaranteed", "profit", "buy now"]
+
+# Captcha logic
+@router.chat_member(ChatMemberUpdatedFilter(member_status_changed=F.NEW_CHAT_MEMBER))
+async def on_user_join(event: ChatMemberUpdated, bot: Bot):
+    session = get_session()
+    if not session:
+        return
+
+    project = session.query(Project).filter(Project.telegram_group_id == event.chat.id).first()
+    if not project or not project.captcha_enabled:
+        return
+
+    user = event.new_chat_member.user
+    
+    # Restrict user until captcha is solved
+    try:
+        await bot.restrict_chat_member(
+            chat_id=event.chat.id,
+            user_id=user.id,
+            permissions=ChatPermissions(can_send_messages=False)
+        )
+    except TelegramBadRequest:
+        return
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="I am not a bot", callback_data=f"captcha_solve_{user.id}")]
+    ])
+
+    await bot.send_message(
+        chat_id=event.chat.id,
+        text=f"Welcome {user.first_name}! Please solve the captcha to speak.",
+        reply_markup=keyboard
+    )
+
+@router.callback_query(F.data.startswith("captcha_solve_"))
+async def solve_captcha(callback: CallbackQuery, bot: Bot):
+    user_id = int(callback.data.split("_")[-1])
+    if callback.from_user.id != user_id:
+        await callback.answer("This is not for you!", show_alert=True)
+        return
+
+    await bot.restrict_chat_member(
+        chat_id=callback.message.chat.id,
+        user_id=user_id,
+        permissions=ChatPermissions(
+            can_send_messages=True,
+            can_send_media_messages=True,
+            can_send_polls=True,
+            can_send_other_messages=True,
+            can_add_web_page_previews=True
+        )
+    )
+    
+    await callback.message.delete()
+    await callback.answer("Verification successful!")
+
+# Anti-spam and scam filter
+@router.message(F.text)
+async def message_filter(message: Message):
+    if not message.chat.type in ["group", "supergroup"]:
+        return
+
+    session = get_session()
+    if not session:
+        return
+
+    project = session.query(Project).filter(Project.telegram_group_id == message.chat.id).first()
+    if not project or not project.scam_filter_enabled:
+        return
+
+    text = message.text.lower()
+    if any(keyword in text for keyword in SCAM_KEYWORDS):
+        try:
+            await message.delete()
+            await message.answer(f"Message from {message.from_user.first_name} removed: Potential scam content detected.")
+        except TelegramBadRequest:
+            pass
 
 
 class ProjectSetup(StatesGroup):
@@ -223,6 +304,7 @@ async def finish_project_setup(message: Message, state: FSMContext, telegram_id:
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="View Project", callback_data=f"view_project_{project.id if session else 0}")],
+        [InlineKeyboardButton(text="Group Police Settings", callback_data=f"police_settings_{project.id if session else 0}")],
         [InlineKeyboardButton(text="Generate Launch Content", callback_data=f"generate_content_{project.id if session else 0}")],
         [InlineKeyboardButton(text="Launch on pump.fun", callback_data=f"launch_{project.id if session else 0}")],
         [InlineKeyboardButton(text="Back to Menu", callback_data="main_menu")]
@@ -438,8 +520,43 @@ async def launch_project(callback: CallbackQuery):
     )
 
 
-@router.callback_query(F.data.startswith("mark_launched_"))
-async def mark_launched(callback: CallbackQuery):
+@router.callback_query(F.data.startswith("police_settings_"))
+async def police_settings(callback: CallbackQuery):
+    await callback.answer()
+    project_id = int(callback.data.split("_")[-1])
+    session = get_session()
+    if not session: return
+    project = session.query(Project).get(project_id)
+    if not project: return
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=f"Captcha: {'✅' if project.captcha_enabled else '❌'}", callback_data=f"toggle_captcha_{project_id}")],
+        [InlineKeyboardButton(text=f"Scam Filter: {'✅' if project.scam_filter_enabled else '❌'}", callback_data=f"toggle_scam_{project_id}")],
+        [InlineKeyboardButton(text="Back to Project", callback_data=f"view_project_{project_id}")]
+    ])
+    await callback.message.answer(f"Group Police Settings for {project.token_name}:", reply_markup=keyboard)
+
+@router.callback_query(F.data.startswith("toggle_captcha_"))
+async def toggle_captcha(callback: CallbackQuery):
+    project_id = int(callback.data.split("_")[-1])
+    session = get_session()
+    if not session: return
+    project = session.query(Project).get(project_id)
+    if project:
+        project.captcha_enabled = not project.captcha_enabled
+        session.commit()
+    await police_settings(callback)
+
+@router.callback_query(F.data.startswith("toggle_scam_"))
+async def toggle_scam(callback: CallbackQuery):
+    project_id = int(callback.data.split("_")[-1])
+    session = get_session()
+    if not session: return
+    project = session.query(Project).get(project_id)
+    if project:
+        project.scam_filter_enabled = not project.scam_filter_enabled
+        session.commit()
+    await police_settings(callback)
     await callback.answer("Project marked as launched!")
     
     project_id = int(callback.data.split("_")[-1])

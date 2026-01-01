@@ -42,6 +42,12 @@ class Project(Base):
     telegram_channel_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="draft")
     pump_fun_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Anti-spam settings
+    anti_spam_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    captcha_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    scam_filter_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
