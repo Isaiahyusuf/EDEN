@@ -10,7 +10,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.exceptions import TelegramBadRequest
 
-from models import init_db, get_session, User, Project
+from models import init_db, get_session, User, Project, Raid
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -106,6 +106,10 @@ class ProjectSetup(StatesGroup):
     waiting_for_logo = State()
     waiting_for_website = State()
     waiting_for_twitter = State()
+
+class RaidSetup(StatesGroup):
+    waiting_for_tweet_url = State()
+    waiting_for_description = State()
 
 
 def get_or_create_user(telegram_id: int, username: str = None, first_name: str = None, last_name: str = None):
@@ -305,6 +309,7 @@ async def finish_project_setup(message: Message, state: FSMContext, telegram_id:
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="View Project", callback_data=f"view_project_{project.id if session else 0}")],
         [InlineKeyboardButton(text="Group Police Settings", callback_data=f"police_settings_{project.id if session else 0}")],
+        [InlineKeyboardButton(text="Twitter Raid Manager", callback_data=f"raid_manager_{project.id if session else 0}")],
         [InlineKeyboardButton(text="Generate Launch Content", callback_data=f"generate_content_{project.id if session else 0}")],
         [InlineKeyboardButton(text="Launch on pump.fun", callback_data=f"launch_{project.id if session else 0}")],
         [InlineKeyboardButton(text="Back to Menu", callback_data="main_menu")]
@@ -535,6 +540,107 @@ async def police_settings(callback: CallbackQuery):
         [InlineKeyboardButton(text="Back to Project", callback_data=f"view_project_{project_id}")]
     ])
     await callback.message.answer(f"Group Police Settings for {project.token_name}:", reply_markup=keyboard)
+
+@router.callback_query(F.data.startswith("raid_manager_"))
+async def raid_manager(callback: CallbackQuery):
+    await callback.answer()
+    project_id = int(callback.data.split("_")[-1])
+    session = get_session()
+    if not session: return
+    project = session.query(Project).get(project_id)
+    if not project: return
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="New Twitter Raid", callback_data=f"new_raid_{project_id}")],
+        [InlineKeyboardButton(text="Active Raids", callback_data=f"active_raids_{project_id}")],
+        [InlineKeyboardButton(text="Back to Project", callback_data=f"view_project_{project_id}")]
+    ])
+    await callback.message.answer(f"Twitter Raid Manager for {project.token_name}:\n\nStart a new raid or manage active ones.", reply_markup=keyboard)
+
+@router.callback_query(F.data.startswith("new_raid_"))
+async def start_new_raid(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    project_id = int(callback.data.split("_")[-1])
+    await state.update_data(project_id=project_id)
+    await callback.message.answer("Please send the Twitter/X tweet URL for the raid:")
+    await state.set_state(RaidSetup.waiting_for_tweet_url)
+
+@router.message(RaidSetup.waiting_for_tweet_url)
+async def process_raid_url(message: Message, state: FSMContext):
+    if "twitter.com" not in message.text and "x.com" not in message.text:
+        await message.answer("Please provide a valid Twitter/X URL.")
+        return
+    await state.update_data(tweet_url=message.text)
+    await message.answer("Enter a short instruction for the raid (e.g., 'Like and Retweet!'):")
+    await state.set_state(RaidSetup.waiting_for_description)
+
+@router.message(RaidSetup.waiting_for_description)
+async def process_raid_desc(message: Message, state: FSMContext, bot: Bot):
+    data = await state.get_data()
+    project_id = data.get("project_id")
+    tweet_url = data.get("tweet_url")
+    desc = message.text
+    
+    session = get_session()
+    if session:
+        project = session.query(Project).get(project_id)
+        if project:
+            raid = Raid(project_id=project_id, tweet_url=tweet_url, description=desc)
+            session.add(raid)
+            session.commit()
+            
+            # Broadcast raid to group if exists
+            if project.telegram_group_id:
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="⚡️ GO RAID NOW", url=tweet_url)]
+                ])
+                await bot.send_message(
+                    chat_id=project.telegram_group_id,
+                    text=f"🚨 **NEW TWITTER RAID!** 🚨\n\n{desc}\n\nLet's show some strength! 💪",
+                    reply_markup=keyboard,
+                    parse_mode="Markdown"
+                )
+    
+    await state.clear()
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Back to Manager", callback_data=f"raid_manager_{project_id}")]
+    ])
+    await message.answer("Raid started and broadcasted to your community!", reply_markup=keyboard)
+
+@router.callback_query(F.data.startswith("active_raids_"))
+async def list_active_raids(callback: CallbackQuery):
+    await callback.answer()
+    project_id = int(callback.data.split("_")[-1])
+    session = get_session()
+    if not session: return
+    raids = session.query(Raid).filter(Raid.project_id == project_id, Raid.status == "active").all()
+    
+    if not raids:
+        await callback.message.answer("No active raids found.")
+        return
+
+    text = "Active Twitter Raids:\n\n"
+    buttons = []
+    for r in raids:
+        text += f"🔹 {r.description or 'Raid'} - {r.created_at.strftime('%Y-%m-%d %H:%M')}\n"
+        buttons.append([InlineKeyboardButton(text="Complete Raid", callback_data=f"complete_raid_{r.id}")])
+    
+    buttons.append([InlineKeyboardButton(text="Back", callback_data=f"raid_manager_{project_id}")])
+    await callback.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+
+@router.callback_query(F.data.startswith("complete_raid_"))
+async def complete_raid(callback: CallbackQuery):
+    raid_id = int(callback.data.split("_")[-1])
+    session = get_session()
+    if not session: return
+    raid = session.query(Raid).get(raid_id)
+    if raid:
+        raid.status = "completed"
+        session.commit()
+        await callback.answer("Raid marked as completed!")
+        await raid_manager(callback)
+    else:
+        await callback.answer("Raid not found.")
 
 @router.callback_query(F.data.startswith("toggle_captcha_"))
 async def toggle_captcha(callback: CallbackQuery):

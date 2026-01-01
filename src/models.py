@@ -53,6 +53,7 @@ class Project(Base):
     
     owner: Mapped["User"] = relationship(back_populates="projects")
     announcements: Mapped[List["Announcement"]] = relationship(back_populates="project")
+    raids: Mapped[List["Raid"]] = relationship(back_populates="project")
 
 
 class Announcement(Base):
@@ -66,6 +67,19 @@ class Announcement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
     project: Mapped["Project"] = relationship(back_populates="announcements")
+
+
+class Raid(Base):
+    __tablename__ = "raids"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    tweet_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="active") # active, completed
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    project: Mapped["Project"] = relationship(back_populates="raids")
 
 
 class VerifiedAdmin(Base):
