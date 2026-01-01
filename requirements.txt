@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+aiogram
+sqlalchemy
+psycopg2-binary
+python-dotenv
+asyncpg
+aiogram
+asyncpg
+fastapi
+psycopg2-binary
+python-dotenv
+sqlalchemy
+uvicorn[standard]

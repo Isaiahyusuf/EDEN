@@ -1,0 +1,76 @@
+Traceback (most recent call last):
+  File "/app/src/bot.py", line 4, in <module>
+    from aiogram import Bot, Dispatcher, Router, F
+ModuleNotFoundError: No module named 'aiogram'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+  File "/app/src/bot.py", line 4, in <module>
+    from aiogram import Bot, Dispatcher, Router, F
+ModuleNotFoundError: No module named 'aiogram'
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+  File "/app/src/bot.py", line 4, in <module>
+    from aiogram import Bot, Dispatcher, Router, F
+ModuleNotFoundError: No module named 'aiogram'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+ModuleNotFoundError: No module named 'aiogram'
+  File "/app/src/bot.py", line 4, in <module>
+    from aiogram import Bot, Dispatcher, Router, F
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+Traceback (most recent call last):
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+  File "/app/src/bot.py", line 4, in <module>
+    from aiogram import Bot, Dispatcher, Router, F
+ModuleNotFoundError: No module named 'aiogram'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+  File "/app/src/bot.py", line 4, in <module>
+    from aiogram import Bot, Dispatcher, Router, F
+ModuleNotFoundError: No module named 'aiogram'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+  File "/app/src/bot.py", line 4, in <module>
+    from aiogram import Bot, Dispatcher, Router, F
+ModuleNotFoundError: No module named 'aiogram'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn'
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/app/src/bot.py", line 4, in <module>
+    from aiogram import Bot, Dispatcher, Router, F
+ModuleNotFoundError: No module named 'aiogram'
+Traceback (most recent call last):
+  File "/app/src/main.py", line 6, in <module>
+    import uvicorn
+ModuleNotFoundError: No module named 'uvicorn
