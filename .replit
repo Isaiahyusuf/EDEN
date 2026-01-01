@@ -17,34 +17,19 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "API Server"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Telegram Bot"
+args = "App Server (Bot + API)"
 
 [[workflows.workflow]]
-name = "API Server"
+name = "App Server (Bot + API)"
 author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "./start.sh"
+waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python src/main.py"
-waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Telegram Bot"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python src/bot.py"
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [[ports]]
 localPort = 5000
