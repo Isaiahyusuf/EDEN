@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 src/main.py
+exec python3 src/main.py
