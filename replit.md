@@ -8,9 +8,9 @@ Telegram-based launchpad assistant for pump.fun.
 - **Database**: PostgreSQL (SQLAlchemy 2.0)
 
 ## Project Structure
-- `main.py`: FastAPI API Server (Port 5000)
-- `bot.py`: Telegram Bot Implementation
-- `models.py`: Database Schema and Models
+- `src/main.py`: FastAPI API Server (Port 5000)
+- `src/bot.py`: Telegram Bot Implementation
+- `src/models.py`: Database Schema and Models
 
 ## Recent Changes
 - Initial project setup with FastAPI, Aiogram, and PostgreSQL.
