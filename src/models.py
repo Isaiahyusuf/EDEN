@@ -5,6 +5,8 @@ from sqlalchemy import create_engine, String, Text, DateTime, Boolean, BigIntege
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 
 class Base(DeclarativeBase):
